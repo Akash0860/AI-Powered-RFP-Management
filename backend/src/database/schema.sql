@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS proposals (
     email_body TEXT,
     received_at TIMESTAMP,
     parsed_at TIMESTAMP,
-    ai_score DECIMAL(3, 2),
+    ai_score DECIMAL(5, 2),
     ai_summary TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

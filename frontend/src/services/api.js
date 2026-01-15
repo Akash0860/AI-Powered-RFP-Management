@@ -14,6 +14,7 @@ export const rfpApi = {
   create: (data) => api.post('/rfps', data),
   getAll: () => api.get('/rfps'),
   getById: (id) => api.get(`/rfps/${id}`),
+  update: (id, data) => api.put(`/rfps/${id}`, data),
   updateStatus: (id, status) => api.patch(`/rfps/${id}/status`, { status }),
   delete: (id) => api.delete(`/rfps/${id}`),
 };

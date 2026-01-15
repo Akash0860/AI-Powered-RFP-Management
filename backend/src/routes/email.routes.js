@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { sendRFPEmail, fetchVendorResponses } from '../services/email.service.js';
-import { parseVendorResponse } from '../services/ai.service.js';
+import { parseVendorResponse, parseVendorResponseGemini } from '../services/ai.service.js';
 
 const router = express.Router();
 
@@ -101,8 +101,21 @@ router.post('/fetch-responses', async (req, res) => {
 
       const vendor = vendorResult.rows[0];
 
+      // Validate email is a reply
+      if (!email.subject.toLowerCase().startsWith('re:')) {
+        console.log(`Email from ${email.from} is not a reply, skipping`);
+        continue;
+      }
+
+      // Validate email contains proposal keywords
+      const hasProposalKeywords = /price|pricing|cost|quote|proposal|total/i.test(email.text);
+      if (!hasProposalKeywords) {
+        console.log(`Email from ${email.from} doesn't look like a proposal, skipping`);
+        continue;
+      }
+
       // Parse response with AI
-      const parsedProposal = await parseVendorResponse(email.text, rfpData);
+      const parsedProposal = await parseVendorResponseGemini(email.text, rfpData);
 
       // Check if proposal already exists
       const existingProposal = await pool.query(

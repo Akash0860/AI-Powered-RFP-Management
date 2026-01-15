@@ -95,6 +95,11 @@ cd backend && npm run dev
 cd frontend && npm run dev
 ```
 
+## Documentation
+
+For a comprehensive technical analysis including architecture decisions, 
+AI integration strategy, and design rationale, see [TECHNICAL_ANALYSIS.md](TECHNICAL_ANALYSIS.md).
+
 ## API Documentation
 
 API endpoints are available at `http://localhost:5000/api`

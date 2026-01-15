@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { parseRFPFromNaturalLanguage } from '../services/ai.service.js';
+import { parseRFPFromNaturalLanguage, parseRFPFromNaturalLanguageGemini } from '../services/ai.service.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.post('/', async (req, res) => {
     }
 
     // Use AI to parse the input
-    const parsedRFP = await parseRFPFromNaturalLanguage(naturalLanguageInput);
+    const parsedRFP = await parseRFPFromNaturalLanguageGemini(naturalLanguageInput);
 
     // Save to database
     const query = `
@@ -74,6 +75,53 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching RFP:', error);
     res.status(500).json({ error: 'Failed to fetch RFP' });
+  }
+});
+
+// Update full RFP
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, budget, delivery_deadline, payment_terms, warranty_period, items } = req.body;
+
+    const query = `
+      UPDATE rfps 
+      SET title = $1, 
+          description = $2, 
+          budget = $3, 
+          delivery_deadline = $4, 
+          payment_terms = $5, 
+          warranty_period = $6, 
+          items = $7, 
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $8 
+      RETURNING *
+    `;
+
+    const values = [
+      title,
+      description,
+      budget,
+      delivery_deadline,
+      payment_terms,
+      warranty_period,
+      typeof items === 'string' ? items : JSON.stringify(items),
+      id
+    ];
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'RFP not found' });
+    }
+
+    res.json({
+      message: 'RFP updated successfully',
+      rfp: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Error updating RFP:', error);
+    res.status(500).json({ error: 'Failed to update RFP', message: error.message });
   }
 });
 

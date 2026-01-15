@@ -5,6 +5,7 @@ import rfpRoutes from './routes/rfp.routes.js';
 import vendorRoutes from './routes/vendor.routes.js';
 import proposalRoutes from './routes/proposal.routes.js';
 import emailRoutes from './routes/email.routes.js';
+import emailWatcher from './services/email-watcher.service.js';
 
 dotenv.config();
 
@@ -39,4 +40,26 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`API available at http://localhost:${PORT}/api`);
+  
+  // Start email watcher for real-time proposal processing
+  if (process.env.ENABLE_EMAIL_WATCHER === 'true') {
+    console.log('\n🔍 Starting email watcher for real-time proposal processing...');
+    emailWatcher.start();
+  } else {
+    console.log('\n⚠️  Email watcher disabled');
+    console.log('   Set ENABLE_EMAIL_WATCHER=true in .env to enable real-time email processing');
+  }
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n\nShutting down gracefully...');
+  emailWatcher.stop();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n\nShutting down gracefully...');
+  emailWatcher.stop();
+  process.exit(0);
 });

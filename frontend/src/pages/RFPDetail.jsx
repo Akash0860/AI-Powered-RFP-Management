@@ -24,14 +24,15 @@ import {
 import {
   Email as EmailIcon,
   Assessment as AssessmentIcon,
-  Refresh as RefreshIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
-import { rfpApi, vendorApi, emailApi } from '../services/api';
+import { rfpApi, vendorApi, emailApi, proposalApi } from '../services/api';
 
 export default function RFPDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [proposalsDialogOpen, setProposalsDialogOpen] = useState(false);
   const [selectedVendors, setSelectedVendors] = useState([]);
 
   const { data: rfp, isLoading: rfpLoading } = useQuery({
@@ -50,19 +51,22 @@ export default function RFPDetail() {
     },
   });
 
-  const sendMutation = useMutation({
-    mutationFn: (data) => emailApi.sendRfp(data),
-    onSuccess: () => {
-      setSendDialogOpen(false);
-      setSelectedVendors([]);
-      alert('RFP sent successfully!');
+  const { data: proposals, isLoading: proposalsLoading } = useQuery({
+    queryKey: ['proposals', id],
+    queryFn: async () => {
+      const response = await proposalApi.getByRfpId(id);
+      return response.data;
     },
   });
 
-  const fetchResponsesMutation = useMutation({
-    mutationFn: (data) => emailApi.fetchResponses(data),
-    onSuccess: (response) => {
-      alert(`Fetched ${response.data.count} vendor responses!`);
+  const sendMutation = useMutation({
+    mutationFn: async ({ rfpId, vendorIds }) => {
+      const response = await emailApi.sendRfp({ rfpId, vendorIds });
+      return response.data;
+    },
+    onSuccess: () => {
+      setSendDialogOpen(false);
+      setSelectedVendors([]);
     },
   });
 
@@ -72,10 +76,6 @@ export default function RFPDetail() {
       rfpId: id,
       vendorIds: selectedVendors,
     });
-  };
-
-  const handleFetchResponses = () => {
-    fetchResponsesMutation.mutate({ rfpId: id });
   };
 
   if (rfpLoading) {
@@ -95,13 +95,21 @@ export default function RFPDetail() {
   }
 
   const items = typeof rfp.items === 'string' ? JSON.parse(rfp.items) : rfp.items;
+  const proposalsCount = proposals?.length || 0;
 
   return (
     <Container maxWidth="lg">
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h4">{rfp.title}</Typography>
-          <Chip label={rfp.status} color="primary" sx={{ mt: 1 }} />
+          <Box display="flex" gap={1} mt={1}>
+            <Chip label={rfp.status} color="primary" />
+            <Chip 
+              label={`${proposalsCount} Proposal${proposalsCount !== 1 ? 's' : ''}`} 
+              color="secondary" 
+              variant="outlined"
+            />
+          </Box>
         </Box>
         <Box display="flex" gap={2}>
           <Button
@@ -113,22 +121,13 @@ export default function RFPDetail() {
           </Button>
           <Button
             variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={handleFetchResponses}
-            disabled={fetchResponsesMutation.isPending}
+            startIcon={<DescriptionIcon />}
+            onClick={() => setProposalsDialogOpen(true)}
           >
-            Fetch Responses
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<AssessmentIcon />}
-            onClick={() => navigate(`/rfps/${id}/compare`)}
-          >
-            Compare Proposals
+            View Proposals ({proposalsCount})
           </Button>
         </Box>
       </Box>
-
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3, mb: 3 }}>
@@ -206,6 +205,85 @@ export default function RFPDetail() {
           >
             {sendMutation.isPending ? 'Sending...' : 'Send'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={proposalsDialogOpen} onClose={() => setProposalsDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Vendor Proposals ({proposalsCount})
+        </DialogTitle>
+        <DialogContent>
+          {proposalsLoading ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : proposalsCount === 0 ? (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              No proposals received yet. Send this RFP to vendors or wait for responses.
+            </Alert>
+          ) : (
+            <Box sx={{ mt: 2 }}>
+              {proposals.map((proposal) => (
+                <Paper key={proposal.id} sx={{ p: 2, mb: 2, border: '1px solid #e0e0e0' }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
+                    <Box>
+                      <Typography variant="h6" color="primary">
+                        {proposal.vendor_name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {proposal.vendor_email}
+                      </Typography>
+                    </Box>
+                    <Typography variant="h5" color="success.main" fontWeight={600}>
+                      ${proposal.total_price?.toLocaleString() || 'N/A'}
+                    </Typography>
+                  </Box>
+
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Delivery Timeline</Typography>
+                      <Typography variant="body2">{proposal.delivery_timeline || 'Not specified'}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Payment Terms</Typography>
+                      <Typography variant="body2">{proposal.payment_terms || 'Not specified'}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Warranty</Typography>
+                      <Typography variant="body2">{proposal.warranty_period || 'Not specified'}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Received At</Typography>
+                      <Typography variant="body2">
+                        {proposal.received_at ? new Date(proposal.received_at).toLocaleDateString() : 'N/A'}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+
+                  {proposal.additional_terms && (
+                    <Box mt={2}>
+                      <Typography variant="caption" color="text.secondary">Additional Terms</Typography>
+                      <Typography variant="body2">{proposal.additional_terms}</Typography>
+                    </Box>
+                  )}
+                </Paper>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setProposalsDialogOpen(false)}>Close</Button>
+          {proposalsCount > 0 && (
+            <Button 
+              variant="contained" 
+              onClick={() => {
+                setProposalsDialogOpen(false);
+                navigate(`/rfps/${id}/compare`);
+              }}
+            >
+              Compare All Proposals
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Container>

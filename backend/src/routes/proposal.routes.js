@@ -1,6 +1,6 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { compareProposals } from '../services/ai.service.js';
+import { compareProposals, compareProposalsGemini } from '../services/ai.service.js';
 
 const router = express.Router();
 
@@ -51,7 +51,7 @@ router.get('/:rfpId/compare', async (req, res) => {
     }
 
     // Use AI to compare
-    const comparison = await compareProposals(rfpData, proposalsResult.rows);
+    const comparison = await compareProposalsGemini(rfpData, proposalsResult.rows);
 
     // Update proposal scores in database
     for (const score of comparison.proposal_scores) {
