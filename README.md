@@ -15,7 +15,7 @@ An intelligent procurement platform that streamlines the entire RFP (Request for
 - **Frontend**: React with Vite
 - **Backend**: Node.js + Express
 - **Database**: PostgreSQL
-- **AI Provider**: OpenAI (GPT-4o-mini)
+- **AI Provider**: Gemini (gemini-2.5-flash)
 - **Email**: Gmail SMTP + IMAP (Nodemailer)
 
 ## Project Structure
