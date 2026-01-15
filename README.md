@@ -33,7 +33,7 @@ aerchain-rfp-system/
 - Node.js (v18 or higher)
 - PostgreSQL (v14 or higher)
 - Gmail account with App Password enabled
-- OpenAI API key
+- Gemini API key
 
 ## Setup Instructions
 
